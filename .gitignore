@@ -7,3 +7,24 @@ __pycache__/
 node_modules/
 dist/
 .DS_Store
+
+# Firmware build output (PlatformIO)
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Python tooling caches and coverage
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# IDE / OS noise
+.idea/
+Thumbs.db
+
+# Runtime data and logs
+*.log
+mosquitto/data/
+mosquitto/log/

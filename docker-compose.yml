@@ -1,0 +1,86 @@
+# Smart Load Protection Panel - local development stack
+#
+# Current services:
+#   mosquitto - MQTT broker (Phase 1)
+#   db        - PostgreSQL + TimescaleDB (Phase 2)
+#
+# Backend and dashboard services will be added in later phases once each one
+# is individually tested.
+#
+# Start all:   docker compose up -d
+# Status:      docker compose ps
+# Logs:        docker compose logs -f
+# Stop:        docker compose down
+#
+# The db service requires DATABASE_PASSWORD to be set in a local .env file
+# (copy .env.example to .env and change the placeholder). .env is ignored by Git.
+
+name: smart-panel
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0.22
+    container_name: smart-panel-mosquitto
+    restart: unless-stopped
+    ports:
+      # Bound to the Windows host loopback interface on purpose.
+      # Development use only: the broker currently allows anonymous clients.
+      # Phase 7 (ESP32 integration) must add authentication and, if the device
+      # connects over the LAN, change this to "1883:1883" and configure the
+      # Windows firewall deliberately.
+      - "127.0.0.1:1883:1883"
+    volumes:
+      - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+    healthcheck:
+      # A successful publish proves the broker is accepting client traffic.
+      test: ["CMD-SHELL", "mosquitto_pub -h 127.0.0.1 -p 1883 -t healthcheck -m ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - panel_net
+
+  db:
+    # Network workaround: Docker Hub's CDN is blocked on this network, so the
+    # image is built locally from AWS ECR's official PostgreSQL mirror plus the
+    # official TimescaleDB apt repository. See db/Dockerfile.
+    #
+    # When Docker Hub is reachable, replace this block with:
+    #   image: timescale/timescaledb:2.31.0-pg17
+    # and remove "build".
+    build:
+      context: ./db
+    image: smart-panel/timescaledb:2.31.0-pg17
+    container_name: smart-panel-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME:-smart_panel}
+      POSTGRES_USER: ${DATABASE_USER:-smart_panel_user}
+      # Required: no default password is baked into this file.
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?set DATABASE_PASSWORD in .env (copy .env.example)}
+    ports:
+      # Loopback-only for local development. The backend container will use
+      # the service name "db" on the shared network instead of this port.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - panel_net
+
+volumes:
+  mosquitto_data:
+    name: smart-panel-mosquitto-data
+  db_data:
+    name: smart-panel-db-data
+
+networks:
+  panel_net:
+    name: smart-panel-net
