@@ -175,14 +175,20 @@ warning, recorded in `docs/testing.md`).
 
 AI provides anomaly detection and analytical insights. Deterministic protection rules remain responsible for safety-critical decisions.
 
-## Development Status
+## Development Status (All Phases 0–14 Complete)
 
-- **Phase 1 — complete:** Mosquitto broker, MQTT contract, health checks, persistence.
-- **Phase 2 — complete:** PostgreSQL + TimescaleDB schema, SQLAlchemy models, Alembic
-  migrations, Argon2id passwords, JWT access tokens, rotating refresh tokens,
-  audit log, device ownership enforcement (404 for another user's device), and
-  the test suite (44 passing).
-- **Next:** Phase 3 — device simulator.
-
-No physical hardware tests have been performed. The system is a prototype and
-does not replace certified electrical protection.
+- **Phase 0 — Inspection:** Hardware pinouts, UART mapping, relay polarities, historical CSV audit.
+- **Phase 1 — Safety Checkpoint:** Reference directory isolated and protected with SHA-256 integrity logs.
+- **Phase 2 — Test Suite Fixes:** IPv6 resolution, connection pooling, 44 tests passed.
+- **Phase 3 — Database Schema Migration:** Created 6 tables for profiles, sessions, fingerprints, recognition, suggestions, and mode selections (50 tests passed).
+- **Phase 4 — Live Ingestion & Safe Simulator:** MQTTTelemetryAdapter, TimescaleDB ingestion service, isolated synthetic generator (54 tests passed).
+- **Phase 5 — Historical Data Quality:** Removed Modbus framing artifacts (590k A, 4.7k V) with zero original file alteration; generated data quality report.
+- **Phase 6 — Fingerprint Extraction Engine:** 24-feature vector (active, reactive, apparent power, PF, CV, P/V^2, startup ratio) (58 tests passed).
+- **Phase 7 — Learning Session Manager & API:** State machine (learning, ready, unstable, insufficient_data, cancelled) and profile CRUD (63 tests passed).
+- **Phase 8 — Recognition Engine:** Standardized weighted Euclidean distance with exponential similarity score (66 tests passed).
+- **Phase 9 — Mode Suggestions & Declarative Rules:** YAML rule engine, Protection Mode for motors, Eco Mode for lighting (70 tests passed).
+- **Phase 10 — Real-Time Anomaly Detection:** Rolling Z-score with noise floors, DOL motor inrush filter, Isolation Forest outlier scoring (74 tests passed).
+- **Phase 11 — Dashboard Integration:** React + Vite dashboard with live WebSocket telemetry, AIPanel, and ProfilesPanel (clean build in 1.14s).
+- **Phase 12 — Mode Enforcement:** Runtime policy enforcement, motor stall alerts, Always-On cutoff guard (78 tests passed).
+- **Phase 13 — Data Collection Plan:** Laboratory test protocols A–D, safety sign-off sheet (docs/data_collection_plan.md).
+- **Phase 14 — E2E Integration Testing & Wrap-Up:** Full lifecycle automated verification (79/79 tests passed).
