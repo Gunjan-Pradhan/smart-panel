@@ -1,0 +1,69 @@
+# Optimization Mode Rules Configuration
+# Final Year ECE Engineering Project: Smart Load Protection Panel
+#
+# Rules are evaluated deterministically against calculated load fingerprints.
+# AI generates recommendations only; operator confirmation is strictly required.
+
+rules:
+  - id: RULE_MOTOR_PROTECTION
+    name: "Industrial Motor Overcurrent & Stall Protection"
+    target_mode: "protection"
+    priority: 10
+    conditions:
+      power_factor_max: 0.85
+      reactive_ratio_min: 0.40
+      active_power_min: 50.0
+    reason_template: "Inductive motor load detected (Power Factor: {power_factor:.2f}, Reactive Ratio: {reactive_ratio_q_s:.2f}, Power: {active_power_w:.1f}W). Protection Mode recommended to alert on overcurrent and stall conditions."
+    proposed_settings:
+      alert_on_stall: true
+      inrush_override_ms: 2500
+      stall_current_factor: 1.5
+
+  - id: RULE_RESISTIVE_LIGHTING_ECO
+    name: "Household Lighting Energy Optimization"
+    target_mode: "eco"
+    priority: 20
+    conditions:
+      power_factor_min: 0.95
+      reactive_ratio_max: 0.15
+      active_power_min: 30.0
+    reason_template: "Resistive lighting load detected (Power Factor: {power_factor:.2f}, Power: {active_power_w:.1f}W). Eco Mode recommended to track runtime and schedule energy-saving curfew."
+    proposed_settings:
+      curfew_schedule_enabled: true
+      idle_standby_threshold_w: 5.0
+      recommended_curfew_hours: "23:00-06:00"
+
+  - id: RULE_HIGH_CURRENT_ALERT
+    name: "Heavy Circuit Thermal Monitoring"
+    target_mode: "thermal_monitor"
+    priority: 5
+    conditions:
+      current_min: 5.0
+    reason_template: "High continuous current draw detected (Mean Current: {current_a:.2f}A). Thermal Monitoring Mode recommended."
+    proposed_settings:
+      continuous_duty_limit_a: 8.0
+      thermal_headroom_pct: 20
+
+  - id: RULE_STANDBY_BASELINE
+    name: "Always-On Non-Switchable Baseline"
+    target_mode: "always_on"
+    priority: 15
+    conditions:
+      active_power_max: 15.0
+      active_power_min: 0.5
+    reason_template: "Low continuous power draw detected ({active_power_w:.1f}W). Baseline Always-On Mode recommended; relay switching is restricted."
+    proposed_settings:
+      switchable: false
+      disconnect_protection: true
+
+  - id: RULE_VARIABLE_LOAD_ADAPTIVE
+    name: "Variable Duty Cycle Smoothing"
+    target_mode: "adaptive_filter"
+    priority: 30
+    conditions:
+      cv_power_min: 0.20
+    reason_template: "Variable dynamic load detected (Power CV: {cv_power:.2f}). Adaptive Trip Smoothing recommended to avoid false nuisance trips."
+    proposed_settings:
+      filter_window_samples: 10
+      glitch_suppression_s: 3.0
+

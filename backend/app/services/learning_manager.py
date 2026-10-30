@@ -23,6 +23,7 @@ from app.models.load_profile import (
 )
 from app.models.user import User
 from app.services.fingerprint import ReadingSample, extract_fingerprint
+from app.services.mode_suggester import ModeSuggester
 
 MIN_VALID_FRACTION_DEFAULT = 0.80
 MIN_READINGS_COUNT_DEFAULT = 15  # Scalable for testing; default in production is 200
@@ -172,6 +173,11 @@ class LearningSessionManager:
                 approved=False,
             )
             self.db.add(fp_record)
+            self.db.flush()
+
+            # Automatically evaluate rules and generate mode suggestions
+            suggester = ModeSuggester(self.db)
+            suggester.generate_suggestions(session.id, fp_record)
 
         self.db.commit()
         self.db.refresh(session)
