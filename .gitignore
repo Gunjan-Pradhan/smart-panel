@@ -28,3 +28,6 @@ Thumbs.db
 *.log
 mosquitto/data/
 mosquitto/log/
+
+# Reference files (contains raw data, photos, and unredacted firmware)
+reference/
