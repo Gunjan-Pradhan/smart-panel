@@ -1,0 +1,26 @@
+{
+  "original_filename": "pzem_training_data_20261012_115213.csv",
+  "original_sha256": "E0C137EB63A41314330C9DF5DDECE4030F85CC0159E2D56ED6904A6D7672F1B2",
+  "total_rows": 239,
+  "retained_count": 237,
+  "excluded_count": 2,
+  "retained_percentage": 99.16,
+  "exclusions": [
+    {
+      "row_index": 1,
+      "logged_at": null,
+      "voltage_V": "643.7",
+      "current_A": "590680.8125",
+      "power_factor_pzem": "243.03",
+      "reason": "Implausible voltage (643.7 V outside 50-300V)"
+    },
+    {
+      "row_index": 202,
+      "logged_at": null,
+      "voltage_V": "0",
+      "current_A": "0",
+      "power_factor_pzem": "0",
+      "reason": "Implausible frequency (182.2 Hz outside 40-65Hz)"
+    }
+  ]
+}

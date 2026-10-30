@@ -1,0 +1,18 @@
+{
+  "original_filename": "pzem_training_data_20261015_160424.csv",
+  "original_sha256": "9AE9667C1254E0438652291ABE1DEF28D4D58CBDDB2C83B7841C58DE98169B30",
+  "total_rows": 88,
+  "retained_count": 87,
+  "excluded_count": 1,
+  "retained_percentage": 98.86,
+  "exclusions": [
+    {
+      "row_index": 88,
+      "logged_at": null,
+      "voltage_V": "147.20",
+      "current_A": "0.0700",
+      "power_factor_pzem": "0.490",
+      "reason": "Implausible frequency (116.0 Hz outside 40-65Hz)"
+    }
+  ]
+}

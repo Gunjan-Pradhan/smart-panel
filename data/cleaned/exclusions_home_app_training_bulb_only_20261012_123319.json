@@ -1,0 +1,42 @@
+{
+  "original_filename": "home_app_training_bulb_only_20261012_123319.csv",
+  "original_sha256": "A4330100E675CAE70B54DC80028FDDB59BB95B8C5116F4793C951031AD16EACC",
+  "total_rows": 136,
+  "retained_count": 132,
+  "excluded_count": 4,
+  "retained_percentage": 97.06,
+  "exclusions": [
+    {
+      "row_index": 71,
+      "logged_at": null,
+      "voltage_V": "4740.50",
+      "current_A": "588583.6875",
+      "power_factor_pzem": "488.790",
+      "reason": "Implausible voltage (4740.5 V outside 50-300V)"
+    },
+    {
+      "row_index": 116,
+      "logged_at": null,
+      "voltage_V": "0.00",
+      "current_A": "0.0000",
+      "power_factor_pzem": "0.000",
+      "reason": "Implausible frequency (231.6 Hz outside 40-65Hz)"
+    },
+    {
+      "row_index": 117,
+      "logged_at": null,
+      "voltage_V": "4740.50",
+      "current_A": "666178.3125",
+      "power_factor_pzem": "652.630",
+      "reason": "Implausible voltage (4740.5 V outside 50-300V)"
+    },
+    {
+      "row_index": 136,
+      "logged_at": null,
+      "voltage_V": "228.10",
+      "current_A": "1.5190",
+      "power_factor_pzem": "1.000",
+      "reason": "Implausible frequency (167.8 Hz outside 40-65Hz)"
+    }
+  ]
+}
