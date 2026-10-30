@@ -6,6 +6,14 @@ from app.models.command import Command
 from app.models.device import Device
 from app.models.event import Event
 from app.models.load import Load
+from app.models.load_profile import (
+    LearningSession,
+    LoadModeSelection,
+    LoadProfile,
+    ModeSuggestion,
+    ProfileFingerprint,
+    RecognitionEvent,
+)
 from app.models.refresh_token import RefreshToken
 from app.models.schedule import Schedule
 from app.models.telemetry import Telemetry
@@ -17,7 +25,13 @@ __all__ = [
     "Command",
     "Device",
     "Event",
+    "LearningSession",
     "Load",
+    "LoadModeSelection",
+    "LoadProfile",
+    "ModeSuggestion",
+    "ProfileFingerprint",
+    "RecognitionEvent",
     "RefreshToken",
     "Schedule",
     "Telemetry",

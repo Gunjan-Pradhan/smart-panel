@@ -22,7 +22,7 @@ def test_alembic_is_at_head(engine) -> None:
             text("SELECT version_num FROM alembic_version")
         ).scalar()
 
-    assert revision == "0004"
+    assert revision == "0005"
 
 
 def test_timescaledb_extension_installed(engine) -> None:
