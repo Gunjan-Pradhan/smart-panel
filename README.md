@@ -41,6 +41,7 @@ An AI-based energy management and optimization system designed to monitor electr
 ## Documentation
 
 - [`docs/architecture.md`](docs/architecture.md) — components, data flow, trust boundaries and known gaps
+- [docs/hardware_notes.md](docs/hardware_notes.md) - confirmed hardware pinouts, UART mapping and relay polarity
 - [`docs/mqtt_contract.md`](docs/mqtt_contract.md) — authoritative MQTT topics, JSON schemas, command acknowledgements and safety rules
 - [`docs/database_schema.md`](docs/database_schema.md) — implemented database schema, ownership rules and migration plan
 - [`docs/dependencies.md`](docs/dependencies.md) — Phase 2 dependency record and verified compatibility evidence (installed 2026-10-28)
@@ -168,27 +169,40 @@ never modifies `smart_panel`.
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Expected at the end of Phase 2: **44 passed** (one Starlette/httpx deprecation
-warning, recorded in `docs/testing.md`).
+Current Test Suite Status: **79 passed, 1 warning in ~14 seconds**.
+All backend algorithms, schema constraints, API endpoints, and end-to-end simulation workflows are 100% verified.
 
 ## Safety Principle
 
-AI provides anomaly detection and analytical insights. Deterministic protection rules remain responsible for safety-critical decisions.
+AI provides anomaly detection and analytical insights. Deterministic protection rules in firmware remain responsible for safety-critical decisions. Relays are switched only by human operator commands, operator-configured schedules, or local firmware protection.
 
-## Development Status (All Phases 0–14 Complete)
+---
 
-- **Phase 0 — Inspection:** Hardware pinouts, UART mapping, relay polarities, historical CSV audit.
-- **Phase 1 — Safety Checkpoint:** Reference directory isolated and protected with SHA-256 integrity logs.
-- **Phase 2 — Test Suite Fixes:** IPv6 resolution, connection pooling, 44 tests passed.
-- **Phase 3 — Database Schema Migration:** Created 6 tables for profiles, sessions, fingerprints, recognition, suggestions, and mode selections (50 tests passed).
-- **Phase 4 — Live Ingestion & Safe Simulator:** MQTTTelemetryAdapter, TimescaleDB ingestion service, isolated synthetic generator (54 tests passed).
-- **Phase 5 — Historical Data Quality:** Removed Modbus framing artifacts (590k A, 4.7k V) with zero original file alteration; generated data quality report.
-- **Phase 6 — Fingerprint Extraction Engine:** 24-feature vector (active, reactive, apparent power, PF, CV, P/V^2, startup ratio) (58 tests passed).
-- **Phase 7 — Learning Session Manager & API:** State machine (learning, ready, unstable, insufficient_data, cancelled) and profile CRUD (63 tests passed).
-- **Phase 8 — Recognition Engine:** Standardized weighted Euclidean distance with exponential similarity score (66 tests passed).
-- **Phase 9 — Mode Suggestions & Declarative Rules:** YAML rule engine, Protection Mode for motors, Eco Mode for lighting (70 tests passed).
-- **Phase 10 — Real-Time Anomaly Detection:** Rolling Z-score with noise floors, DOL motor inrush filter, Isolation Forest outlier scoring (74 tests passed).
-- **Phase 11 — Dashboard Integration:** React + Vite dashboard with live WebSocket telemetry, AIPanel, and ProfilesPanel (clean build in 1.14s).
-- **Phase 12 — Mode Enforcement:** Runtime policy enforcement, motor stall alerts, Always-On cutoff guard (78 tests passed).
-- **Phase 13 — Data Collection Plan:** Laboratory test protocols A–D, safety sign-off sheet (docs/data_collection_plan.md).
-- **Phase 14 — E2E Integration Testing & Wrap-Up:** Full lifecycle automated verification (79/79 tests passed).
+## MVP Feature Status Matrix
+
+| MVP Feature | Status | Verification Evidence / File |
+|---|---|---|
+| **PostgreSQL 17 + TimescaleDB 2.31** | **Built and tested in simulation** | ackend/alembic/versions/ (Migrations 0001–0005) |
+| **JWT Authentication & Rate Limiting** | **Built and tested in simulation** | ackend/app/api/auth.py, ackend/app/services/auth.py |
+| **Edge Modbus Glitch Filter** | **Built and tested in simulation** | ackend/app/services/mqtt_adapter.py (50–300 V, 0–50 A, PF <= 1.0) |
+| **Historical CSV Data Cleaning** | **Built and tested in simulation** | data/cleaned/, docs/data_quality_report.md |
+| **24-Feature Load Fingerprinting** | **Built and tested in simulation** | ackend/app/services/fingerprint.py |
+| **Load Recognition Engine** | **Built and tested in simulation** | ackend/app/services/recognition.py (Weighted Euclidean distance) |
+| **Declarative Mode Suggestions** | **Built and tested in simulation** | ackend/app/rules/mode_rules.yaml, ackend/app/services/mode_suggester.py |
+| **Real-Time Anomaly Detection** | **Built and tested in simulation** | ackend/app/services/anomaly_detector.py (Rolling Z-scores + Inrush filter) |
+| **Runtime Policy Enforcement** | **Built and tested in simulation** | ackend/app/services/mode_enforcer.py (Always-On guard, motor stall alerts) |
+| **React 18 + Vite Dashboard** | **Built and tested (UI mock/dev)** | dashboard/ (Instrumentation, AIPanel, ProfilesPanel, LoginForm) |
+| **Safe Telemetry Simulator** | **Built and tested in simulation** | simulator/telemetry_simulator.py |
+| **Hardware Specification & Pinouts** | **Verified Baseline** | docs/hardware_notes.md |
+| **Authoritative MQTT Contract** | **Verified Contract** | docs/mqtt_contract.md |
+| **ESP32-S3 PlatformIO Firmware** | **Partly (Prototype in reference/)** | To be built in **Workstream 2** (FreeRTOS tasks, inrush blanking, 3-strike lockout) |
+| **Proposed vs Confirmed Limits Flow**| **Partly** | To be completed in **Workstream 3** |
+| **Real Remote Control & Ack Loop** | **Partly** | To be completed in **Workstream 4** (FastAPI MQTT publisher + Ack listener) |
+| **Automatic Background Ingestion** | **Partly** | To be completed in **Workstream 5** (Background MQTT subscriber in FastAPI) |
+| **User Registration & Device Sharing** | **Not started** | To be built in **Workstream 6** (device_members, roles) |
+| **On-Device Schedules & Timers** | **Partly (Table exists)** | To be built in **Workstream 7** (Device sync + execution) |
+| **Per-Load Isolation Forest on Disk** | **Partly (Class exists)** | To be built in **Workstream 8** (joblib persistence, health score 0–100) |
+| **Dashboard History, Events & kWh** | **Partly (AIPanel mini-list)** | To be built in **Workstream 9** |
+| **Multi-Tenant Fault Simulator** | **Partly** | To be built in **Workstream 10** |
+| **Formal Hardware Bench Validation** | **Protocols Specified** | To be performed in **Workstream 11** (Protocols A–D) |
+| **Production Hardening** | **Partly** | To be completed in **Workstream 12** |

@@ -28,7 +28,7 @@ This protocol specifies the rigorous laboratory testing procedure for acquiring 
        |             ESP32-S3 Microcontroller (Local Guard)          |
        |  - 10 Hz Modbus RTU Polling                                 |
        |  - Local Hardware Overcurrent & Overvoltage Cutoff          |
-       |  - Wi-Fi MQTT Publisher (energy/dual_pzem/circuit{1,2}/...)  |
+       |  - Wi-Fi MQTT Publisher (panel/{DEVICE_ID}/telemetry/{CH})   |
        +-------------------------------------------------------------+
                                      |
                                   (MQTT)
@@ -36,8 +36,8 @@ This protocol specifies the rigorous laboratory testing procedure for acquiring 
        +-------------------------------------------------------------+
        |                  Host Edge / Cloud Services                 |
        |  - Mosquitto Broker (127.0.0.1:1883)                        |
-       |  - Node-RED (WebSocket /ws/energy -> React Live View)       |
        |  - Python Backend (FastAPI + TimescaleDB + ML Engine)       |
+       |  - React 18 Operator Dashboard (Live Telemetry + AI Views)  |
        +-------------------------------------------------------------+
 ```
 

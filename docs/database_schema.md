@@ -444,8 +444,39 @@ on its own.
 2. **Migration 0002 — authentication tables (implemented):** `users`, `refresh_tokens`.
 3. **Migration 0003 — core tables (implemented):** `devices`, `loads`, `channels`, `events`, `commands`, `schedules`, `audit_log`.
 4. **Migration 0004 — telemetry hypertable (implemented):** create `telemetry`, run `create_hypertable('telemetry','ts')`, then create indexes.
-5. **Migration 0005 — policies (later):** retention (and compression if verified). Separate migration so the MVP can deploy without policy assumptions.
-6. **Migration 0006 (Phase 9):** `anomaly_scores`, `health_scores`.
+5. **Migration 0005 — load profiling and learning (implemented):** `load_profiles`, `learning_sessions`, `profile_fingerprints`, `recognition_events`, `mode_suggestions`, `load_mode_selections`.
+6. **Migration 0006 — multi-user device sharing (planned Workstream 6):** `device_members` table with `owner`, `admin`, `viewer` roles.
+
+---
+
+## 7.1 Implemented Migration 0005: Load Profiles & Machine Learning
+
+Migration `0005_load_profiles_and_learning.py` introduced 6 tables supporting appliance fingerprinting, real-time recognition, and declarative mode suggestions:
+
+```
+load_profiles (id UUID PK, owner_id UUID FK->users.id, display_name TEXT, user_confirmed BOOL,
+  │            channel_last_seen SMALLINT [1,2], nominal_power_w NUMERIC, nominal_current_a NUMERIC)
+  │
+  ├── profile_fingerprints (id UUID PK, profile_id UUID FK->load_profiles.id, learning_session_id UUID FK,
+  │                         voltage_mean/std, current_mean/std, active_power_mean/std, pf_mean/std,
+  │                         frequency_mean/std, apparent_power_s, reactive_power_q, reactive_ratio_q_s,
+  │                         cv_power, power_per_volt_sq, startup_ratio, transition_count)
+  │
+  └── load_mode_selections (id UUID PK, profile_id UUID FK->load_profiles.id, mode_name TEXT,
+                            enabled BOOL, source TEXT ['ai_suggestion','manual','saved_profile'], selected_by UUID)
+
+learning_sessions (id UUID PK, channel SMALLINT [1,2], start_time TIMESTAMPTZ, end_time TIMESTAMPTZ,
+  │                 status TEXT ['learning','ready','unstable','insufficient_data','cancelled'],
+  │                 valid_count INT, excluded_count INT, exclusion_reasons JSONB)
+  │
+  └── mode_suggestions (id UUID PK, learning_session_id UUID FK->learning_sessions.id,
+                        mode_name TEXT, rule_id TEXT, reason_text TEXT, triggering_values JSONB)
+
+recognition_events (id UUID PK, channel SMALLINT [1,2], recognized_at TIMESTAMPTZ,
+                    best_candidate_id UUID FK->load_profiles.id, runner_up_id UUID FK->load_profiles.id,
+                    similarity_score FLOAT [0..100], state TEXT ['recognized','ambiguous','unknown','insufficient_data'],
+                    user_feedback TEXT ['pending','confirmed','corrected'], corrected_profile_id UUID FK)
+```
 
 Rules:
 

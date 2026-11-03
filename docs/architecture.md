@@ -1,121 +1,99 @@
-# Architecture
+# System Architecture & Technical Specification
 
-**Status:** Phase 2 implemented (database, authentication, ownership).
-**Last updated:** 2026-10-29
-
-This document describes the system components, the data flow that exists today,
-and the boundaries that later phases must preserve.
+**Project:** Smart Load Protection Panel  
+**Status:** Architecture Reconciled & Aligned (Post-Audit Baseline)  
+**Last Updated:** 2026-11-03  
 
 ---
 
-## 1. Components
+## 1. System Mission & Core Principles
 
-| Component | Technology | Phase | Responsibility |
+The Smart Load Protection Panel is a dual-channel 230 V AC energy monitoring, appliance recognition, and protection system. It combines deterministic edge hardware protection with intelligent cloud/edge analytics.
+
+### Safety Invariants
+1. **Deterministic Edge Protection:** Hardware relays switch autonomously on overcurrent, overvoltage, undervoltage, and meter loss inside the ESP32-S3 firmware. Edge protection never waits for or depends on internet, Wi-Fi, MQTT, or backend servers.
+2. **AI Is Strictly Advisory:** Machine learning models, fingerprinting engines, and rule engines advise and suggest; they **never** actuate physical relays or modify hardware safety limits autonomously.
+3. **Confirmed Limits Only:** Channel safety limits remain unconfirmed until an authorized human confirms them.
+4. **Clean Boundary Separation:** 
+   - `panel/{DEVICE_ID}/telemetry/{CH}`: Pure electrical measurement streaming from device to backend.
+   - `panel/{DEVICE_ID}/cmd` & `ack`: Authorized control plane with guaranteed state tracking.
+   - `panel/{DEVICE_ID}/event`: Hardware and system notifications.
+
+---
+
+## 2. Component Inventory
+
+| Component | Technology | Current Implementation Status | Responsibility |
 |---|---|---|---|
-| Protection panel | ESP32-S3 + 2 × PZEM-004T V4 + 2 × SSR-40DA | 7 | Measure both channels, apply deterministic protection, publish telemetry, acknowledge commands |
-| Broker | Eclipse Mosquitto 2.0.22 | 1 | MQTT transport between firmware and backend |
-| Backend | Python 3.13, FastAPI, SQLAlchemy 2, Alembic | 2–6 | Validate/ingest telemetry, expose REST/WebSocket APIs, enforce authorization and safety rules, issue commands |
-| Database | PostgreSQL 17 + TimescaleDB 2.31 | 2–9 | Source of truth for users, devices, loads, telemetry, events, commands, schedules, audit and AI results |
-| Dashboard | React + Vite | 5–6 | Live readings, history, faults, relay control and schedules |
-| Simulator | Python | 3 | Contract-valid telemetry, command acknowledgements and fault injection without hardware |
-| AI/ML | NumPy, Pandas, scikit-learn | 8–9 | Load fingerprints, anomaly detection and advisory health scores |
+| **Protection Panel** | ESP32-S3 + dual PZEM-004T + Relay & SSR | Prototype sketch in `reference/`; Production PlatformIO C++ firmware in **Workstream 2** | Local dual-channel measurement, inrush blanking, 3-strike lockout, local schedules, safe boot |
+| **MQTT Broker** | Eclipse Mosquitto 2.0.22 | **Built & Tested** (Docker `127.0.0.1:1883`) | Message transport between firmware/simulator and backend |
+| **Backend API** | FastAPI, Python 3.13, SQLAlchemy 2, Pydantic v2 | **Built & Tested (Simulation)** (79 pytest tests) | REST endpoints for auth, device inspection, learning sessions, fingerprints, recognition, anomaly detection, mode enforcement |
+| **Database** | PostgreSQL 17 + TimescaleDB 2.31 | **Built & Tested** (Migrations 0001–0005) | Relational source of truth for users, devices, profiles, fingerprints, and telemetry hypertable |
+| **Simulator** | Python 3.13 | **Built & Tested (Simulation)** | Isolated synthetic telemetry generator (DOL motor inrush, bulb loads) |
+| **Web Dashboard** | React 18, Vite 6 | **Built & Tested (Local UI)** | Live telemetry dials, AI Panel (training, recognition, suggestions, anomalies), Profile management |
+| **Background Consumer** | Python / Asyncio MQTT | **Planned (Workstream 5)** | Continuous background ingestion of telemetry, events, and acks into TimescaleDB |
 
 ---
 
-## 2. Current data flow (Phase 2)
+## 3. End-to-End Data Flow
 
 ```
-React dashboard (Phase 5)
-        │  HTTPS/JSON (planned)
-        ▼
-FastAPI backend ──────────────► PostgreSQL + TimescaleDB
-   │  /auth/*, /devices          users, refresh_tokens, devices,
-   │                             loads, channels, events, commands,
-   │                             schedules, audit_log, telemetry
-   │
-   └── MQTT ingestion is added in Phase 4
-          ▲
-          │
-     Mosquitto (Phase 1)
-          ▲
-          │
-     ESP32-S3 (Phase 7)
++-----------------------------------------------------------------------------------+
+| PHYSICAL PANEL (ESP32-S3)                                                          |
+| - Channel 1 (Induction Motor): PZEM-004T on UART2 | Mechanical Relay (Active-LOW) |
+| - Channel 2 (Resistive Bulbs): PZEM-004T on UART1 | SSR-40DA Relay (Active-HIGH)  |
+| - Local Protection: Inrush Blanking, 3-Strike Lockout, Overcurrent, Safe Boot    |
++-----------------------------------------+-----------------------------------------+
+                                          |
+                                          | MQTT (JSON Contract)
+                                          v
++-----------------------------------------------------------------------------------+
+| ECLIPSE MOSQUITTO BROKER (127.0.0.1:1883)                                         |
+| - panel/{DEVICE_ID}/telemetry/{CH} (QoS 1, Unretained)                             |
+| - panel/{DEVICE_ID}/status         (QoS 1, Retained LWT)                          |
+| - panel/{DEVICE_ID}/event          (QoS 1, Unretained)                            |
+| - panel/{DEVICE_ID}/cmd            (QoS 1, Unretained)                            |
+| - panel/{DEVICE_ID}/ack            (QoS 1, Unretained)                            |
++-------------------+-------------------------------------+-------------------------+
+                    |                                     ^
+                    | Subscribes                          | Publishes Commands
+                    v                                     |
++---------------------------------------------------------+-------------------------+
+| FASTAPI BACKEND (Python 3.13)                                                     |
+| - Background Ingestion Service (Edge Glitch Filtering: 50-300V, 0-50A, PF 0-1)    |
+| - TimescaleDB Hypertable Persistence (telemetry: v, i, p, pf, f, e)               |
+| - 24-Feature Fingerprint Extraction Engine                                        |
+| - Real-Time Recognition Engine (Standardized Weighted Euclidean Distance)        |
+| - Declarative Mode Suggester (YAML Rules: Motor Protection, Lighting Eco)        |
+| - Multi-Tier Anomaly Detector (Rolling Z-Scores, Noise Floors, DOL Inrush Filter) |
+| - Mode Enforcer & Always-On Command Safety Guard                                  |
++-------------------+---------------------------------------------------------------+
+                    |
+                    | REST API (JWT Authenticated, 404 Tenant Isolation)
+                    v
++-----------------------------------------------------------------------------------+
+| OPERATOR DASHBOARD (React 18 + Vite 6)                                            |
+| - Live Instrumentation & Telemetry                                                |
+| - AI Intelligence Tab (Session Training, Similarity Confidence, Mode Approvals)   |
+| - Profile Catalog & Manual Confirmation                                           |
++-----------------------------------------------------------------------------------+
 ```
 
-Only the REST authentication and read-only device endpoints exist now. MQTT
-telemetry ingestion, command publication and WebSocket push are deliberately
-deferred to Phases 4 and 6.
-
 ---
 
-## 3. Authentication flow
+## 4. Current Status vs Roadmap
 
-1. `POST /auth/login` receives email and password.
-2. The backend normalizes the email, looks up the user and verifies the
-   Argon2id hash. Failures return the same generic 401 message and are audited.
-3. On success the backend returns:
-   - a 15-minute HS256 JWT access token (`sub`, `role`, `iat`, `exp`, `jti`);
-   - a 14-day opaque refresh token (256 bits).
-4. Only the SHA-256 hash of the refresh token is stored. The raw value is
-   returned once.
-5. `POST /auth/refresh` rotates the token: the old row is marked revoked and a
-   successor is inserted in the same `family_id`.
-6. Replaying a consumed token revokes the whole family and writes a
-   `REFRESH_TOKEN_REUSE` audit entry. The first detection is audited; later
-   replays of the same dead family are rejected without flooding the log.
-7. `POST /auth/logout` revokes the presented refresh token.
+The system has achieved complete backend simulation verification (79 automated tests passing). The following areas represent the active completion roadmap:
 
-The access token is stateless, so deactivation is enforced by loading the user
-from the database on every authenticated request (`is_active` must be true).
-
----
-
-## 4. Ownership and authorization
-
-- Every device belongs to exactly one user in the MVP.
-- Non-admin queries filter by `devices.owner_id = current_user.id`.
-- A request for another user's device returns **404**, not 403, so the API does
-  not confirm that the device exists.
-- Admin accounts may read every device. Write/control roles are defined in the
-  schema (`admin`, `operator`, `viewer`) and will be enforced per endpoint as
-  control APIs are added.
-- The MQTT broker does not authenticate dashboard users. The backend is the
-  policy enforcement point.
-
----
-
-## 5. Trust boundaries and secrets
-
-| Boundary | Current state | Deployment requirement |
-|---|---|---|
-| Dashboard → backend | CORS allows configured origins; HTTP locally | TLS, restrictive CORS, secure cookies or token storage |
-| Backend → database | Password in `.env`, never committed | Secret manager, least-privilege database role |
-| Backend → broker | Not connected yet | Authenticated MQTT, TLS, topic ACLs |
-| Firmware → broker | Not connected yet | Per-device credentials, TLS, restricted topics |
-| JWT signing key | `JWT_SECRET` in `.env` | ≥ 32 random characters; startup rejects missing/short/example values |
-
-`.env` is ignored by Git. `.env.example` contains placeholders only. Migrations
-contain no passwords; the first account is created with
-`scripts/create_admin.py`.
-
----
-
-## 6. Safety principle
-
-AI output is advisory. Deterministic protection rules and explicit,
-user-confirmed channel limits remain responsible for safety-critical decisions.
-A channel with unconfirmed limits must refuse `ON` commands when the control
-path is implemented in Phase 6. The dashboard must label relay state as
-"commanded" because the SSR provides no feedback contact.
-
-This is a prototype, not certified electrical protection.
-
----
-
-## 7. Known gaps at the end of Phase 2
-
-- No MQTT ingestion, WebSocket stream, command endpoint or schedule executor.
-- No registration, password-reset or user-management API; use the admin CLI.
-- Login rate limiting is in-process only.
-- Telemetry retention/compression policies are not configured.
-- No physical hardware test has been performed.
+1. **Workstream 1 (Current):** Single source of truth documentation reconciliation.
+2. **Workstream 2:** ESP32-S3 PlatformIO firmware with FreeRTOS tasks and laptop-native unit tests.
+3. **Workstream 3:** Proposed vs. confirmed safety limits policy.
+4. **Workstream 4:** Remote control pipeline with command dispatch over MQTT and device acknowledgement tracking.
+5. **Workstream 5:** Automatic background MQTT subscriber in FastAPI.
+6. **Workstream 6:** Multi-user accounts, registration endpoint, and per-device RBAC roles.
+7. **Workstream 7:** On-device schedule synchronization and offline execution.
+8. **Workstream 8:** Persistent per-load Isolation Forest models and 0–100 health score calculation.
+9. **Workstream 9:** Historical trends, events, and energy (kWh) views in the React dashboard.
+10. **Workstream 10:** Multi-tenant fault-injection simulator.
+11. **Workstream 11:** Formal bench validation protocols (Protocols A–D) comparing hardware vs simulation.
+12. **Workstream 12:** Production hardening, secrets verification, and packaging.

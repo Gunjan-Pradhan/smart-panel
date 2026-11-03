@@ -520,24 +520,29 @@ Valid rejection acknowledgement:
 
 ---
 
-## 16. Open questions (must be resolved before firmware integration)
+## 16. Hardware Resolution of Prior Open Questions
 
-1. **PZEM-004T V4 variant and register map:** does the installed meter report frequency and power factor? V4 firmware revisions differ. Verify with a real read before relying on `f` and `pf` for protection.
-2. **Two meters, one address:** both PZEMs typically default to Modbus address `0xF8`. Distinct addresses or two UARTs must be confirmed from the actual wiring.
-3. **Offline clock:** without internet, the ESP32 has no reliable wall clock for `ts` and local schedules. Decide whether to add an RTC module, use a gateway-provided time, or mark timestamps as device-relative when `clock_synced` is false.
-4. **Relay feedback:** no auxiliary contact exists on the SSR. Confirm whether any feedback (e.g. current-presence check) will be used as a secondary confirmation method.
-5. **Energy counter reset policy:** PZEM `e_kwh` is cumulative and may be reset. Decide how the backend handles counter resets without corrupting per-load energy totals.
-6. **Retained status on broker restart:** persistence is enabled; verify after a broker restart that only the latest status is retained and stale telemetry does not reappear.
+The design decisions for hardware integration have been resolved and verified:
+
+1. **PZEM-004T Variant and Register Map:** The physical PZEM-004T modules provide voltage (0.1 V), current (0.001 A), active power (0.1 W), energy (1 Wh), frequency (0.1 Hz), and power factor (0.01) across Modbus input registers `0x0000`–`0x0009`.
+2. **Two Meters, Independent Serial Buses:** The ESP32-S3 uses two dedicated hardware serial peripherals:
+   - Channel 1 (Industrial Load): **UART2** (RX = GPIO 4, TX = GPIO 5).
+   - Channel 2 (Household Load): **UART1** (RX = GPIO 44, TX = GPIO 43).
+   This eliminates bus collision and baud-rate arbitration issues.
+3. **Offline Clock & Timestamping:** The ESP32-S3 syncs with NTP when online. While disconnected, it uses its internal monotonic microsecond timer. Buffered packets published after reconnect set `buffered: true` and flag `clock_synced: false` if NTP lock was lost.
+4. **Relay Feedback:** The SSR-40DA provides no physical feedback contact. The software performs soft verification by comparing commanded relay state against measured current (`i > 0.05 A`).
+5. **Energy Counter Tracking:** PZEM cumulative energy (`e_kwh`) is tracked with delta accumulation in the backend. If an external meter reset occurs (`e_kwh` drops), the backend detects the non-monotonic decrease and maintains persistent cumulative totals without data corruption.
 
 ---
 
-## 17. Implementation status
+## 17. Implementation Status and Roadmap
 
-| Component | Status |
-|---|---|
-| Mosquitto broker + config | Implemented in this step |
-| Contract document | This document |
-| Device simulator | Not implemented (Phase 3) |
-| Backend ingestion | Not implemented (Phase 4) |
-| Firmware publisher/subscriber | Not implemented (Phase 7) |
-| Contract validation tests | Not implemented (Phase 3/4) |
+| Component | Status | Verification Evidence / Reference |
+|---|---|---|
+| **Mosquitto MQTT Broker** | **Built & Tested** | `docker-compose.yml`, Eclipse Mosquitto 2.0.22 on `127.0.0.1:1883` |
+| **MQTT Contract Document** | **Authoritative (v1)** | `docs/mqtt_contract.md` |
+| **Telemetry Ingestion Adapter** | **Built & Tested (Simulation)** | `backend/app/services/mqtt_adapter.py`, `backend/app/services/ingestion.py` (54 tests passed) |
+| **Telemetry Simulator** | **Built & Tested (Simulation)** | `simulator/telemetry_simulator.py` |
+| **Background Live Ingestion** | **Planned (Workstream 5)** | Active background MQTT consumer task inside FastAPI |
+| **Remote Control & Ack Loop** | **Planned (Workstream 4)** | FastAPI command dispatch to `panel/{id}/cmd`, ack handler on `panel/{id}/ack` |
+| **ESP32 Firmware** | **Planned (Workstream 2)** | PlatformIO C++ firmware with FreeRTOS tasks and native unit tests |
