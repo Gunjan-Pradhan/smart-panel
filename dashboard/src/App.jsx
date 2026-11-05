@@ -1,24 +1,27 @@
 /**
- * App.jsx — Smart Load Protection Panel Dashboard v2
+ * App.jsx — Smart Load Protection Panel Dashboard v2.5
  *
- * Combines the original live telemetry view (via Node-RED WebSocket)
- * with AI-powered features (via FastAPI REST API):
- * - Load learning and profile management
- * - Real-time load recognition with similarity scoring
- * - Optimization mode suggestions with operator acceptance
- * - Anomaly detection with Z-score alerts
+ * Full Capstone System Interface:
+ * - Real-Time Telemetry Streaming via native FastAPI WebSocket (/ws/live/{device_id})
+ * - Dual PZEM-004T Channel Telemetry & Relay Control with Real-Ack Tracking
+ * - AI Load Recognition & Learning Engine
+ * - Safe Limits Policy Management (Operator Confirmation of +25% Proposals)
+ * - Local Hardware Schedules & Automated Timers
+ * - Protection Events & Anomaly Audit Log
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./App.css";
 
 import { useWebSocket } from "./hooks/useWebSocket.js";
-import { getToken, clearToken } from "./api/client.js";
+import { getToken, clearToken, api } from "./api/client.js";
 
 import CircuitCard from "./components/CircuitCard.jsx";
 import Metric, { fmt } from "./components/Metric.jsx";
 import LoginForm from "./components/LoginForm.jsx";
 import AIPanel from "./components/AIPanel.jsx";
 import ProfilesPanel from "./components/ProfilesPanel.jsx";
+import SchedulesPanel from "./components/SchedulesPanel.jsx";
+import EventsPanel from "./components/EventsPanel.jsx";
 
 const EMPTY_CIRCUIT = {
   valid: false,
@@ -62,9 +65,36 @@ const EMPTY_CIRCUIT = {
 };
 
 export default function App() {
-  const { telemetry, connected, connectionText, sendCommand } = useWebSocket();
+  const [activeDeviceId, setActiveDeviceId] = useState("PANEL-0001");
+  const { telemetry, connected, connectionText, sendCommand, setDeviceId } =
+    useWebSocket(activeDeviceId);
+
   const [loggedIn, setLoggedIn] = useState(!!getToken());
   const [activeTab, setActiveTab] = useState("live");
+  const [userDevices, setUserDevices] = useState([]);
+
+  useEffect(() => {
+    if (loggedIn) {
+      api
+        .getDevices()
+        .then((devices) => {
+          if (Array.isArray(devices) && devices.length > 0) {
+            setUserDevices(devices);
+            if (!devices.some((d) => d.device_id === activeDeviceId)) {
+              setActiveDeviceId(devices[0].device_id);
+              setDeviceId(devices[0].device_id);
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  }, [loggedIn]);
+
+  function handleDeviceChange(e) {
+    const newId = e.target.value;
+    setActiveDeviceId(newId);
+    setDeviceId(newId);
+  }
 
   const c1 = { ...EMPTY_CIRCUIT, ...(telemetry.circuit1 || {}) };
   const c2 = { ...EMPTY_CIRCUIT, ...(telemetry.circuit2 || {}) };
@@ -90,14 +120,31 @@ export default function App() {
     <main className="dashboard">
       <header className="topbar">
         <div>
-          <p className="eyebrow">SMART LOAD PROTECTION PANEL</p>
-          <h1>Dual-Circuit Energy Monitor</h1>
+          <p className="eyebrow">SMART LOAD PROTECTION PANEL · ECE CAPSTONE</p>
+          <h1>Dual-Circuit Energy & Protection Dashboard</h1>
           <p className="subtext">
-            Live measurements, AI load recognition, and optimization suggestions
+            Autonomous protection, sub-cycle telemetry, AI load recognition & safe limits
           </p>
         </div>
 
         <div className="topbar-right">
+          {userDevices.length > 0 && (
+            <div className="device-picker">
+              <label htmlFor="device-select">Device: </label>
+              <select
+                id="device-select"
+                value={activeDeviceId}
+                onChange={handleDeviceChange}
+              >
+                {userDevices.map((d) => (
+                  <option key={d.id} value={d.device_id}>
+                    {d.name} ({d.device_id})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className={`connection ${connected ? "online" : "offline"}`}>
             <span className="status-dot" />
             {connectionText}
@@ -129,13 +176,30 @@ export default function App() {
           className={activeTab === "profiles" ? "tab active" : "tab"}
           onClick={() => setActiveTab("profiles")}
         >
-          📋 Load Profiles
+          📋 Profiles & Safe Limits
+        </button>
+        <button
+          className={activeTab === "schedules" ? "tab active" : "tab"}
+          onClick={() => setActiveTab("schedules")}
+        >
+          ⏱️ Local Schedules
+        </button>
+        <button
+          className={activeTab === "events" ? "tab active" : "tab"}
+          onClick={() => setActiveTab("events")}
+        >
+          🛡️ Protection & Events
         </button>
       </nav>
 
       {/* Combined Summary (always visible) */}
       <section className="summary-card">
-        <h2>Combined Circuit Summary</h2>
+        <div className="summary-header">
+          <h2>Combined Circuit Summary — Panel {activeDeviceId}</h2>
+          <span className="subtext">
+            Channel 1: Inductive Motor (16A cap) · Channel 2: Sensitive Load (10A cap)
+          </span>
+        </div>
         <div className="summary-grid">
           {totals.map(([label, key, unit, decimals]) => (
             <Metric
@@ -149,11 +213,8 @@ export default function App() {
         </div>
         <p className={bothValid ? "normal" : "warning"}>
           {bothValid
-            ? "Both meters have valid readings"
-            : "One or both meters have missing or invalid readings"}
-        </p>
-        <p className="subtext">
-          ESP32 uptime: {fmt(telemetry.uptime_s, 0)} seconds
+            ? "✓ Both energy meters reporting valid synchronized telemetry"
+            : "⚠ Waiting for live PZEM meter streams..."}
         </p>
       </section>
 
@@ -191,7 +252,7 @@ export default function App() {
         </>
       )}
 
-      {/* Load Profiles Tab */}
+      {/* Load Profiles & Safe Limits Tab */}
       {activeTab === "profiles" && (
         <>
           {loggedIn ? (
@@ -204,10 +265,36 @@ export default function App() {
         </>
       )}
 
+      {/* Local Schedules Tab */}
+      {activeTab === "schedules" && (
+        <>
+          {loggedIn ? (
+            <SchedulesPanel defaultDeviceId={activeDeviceId} />
+          ) : (
+            <section className="login-section">
+              <LoginForm onLogin={() => setLoggedIn(true)} />
+            </section>
+          )}
+        </>
+      )}
+
+      {/* Protection Events Tab */}
+      {activeTab === "events" && (
+        <>
+          {loggedIn ? (
+            <EventsPanel />
+          ) : (
+            <section className="login-section">
+              <LoginForm onLogin={() => setLoggedIn(true)} />
+            </section>
+          )}
+        </>
+      )}
+
       <footer>
-        ESP32-S3 WROOM · Dual PZEM-004T · MQTT · Node-RED · FastAPI · PostgreSQL + TimescaleDB
+        ESP32-S3 WROOM · Dual PZEM-004T v3/v4 · FreeRTOS · Mosquitto MQTT · FastAPI · TimescaleDB
+        · Advisory AI Engine
       </footer>
     </main>
   );
 }
-

@@ -51,7 +51,16 @@ export const api = {
   login: (email, password) =>
     request("POST", "/auth/login", { email, password }),
 
-  // Learning
+  // Devices & Commands
+  getDevices: () => request("GET", "/devices"),
+  getDevice: (id) => request("GET", `/devices/${id}`),
+  sendCommand: (deviceId, ch, action) =>
+    request("POST", `/devices/${deviceId}/commands`, { ch, action }),
+  getDeviceMembers: (deviceId) => request("GET", `/devices/${deviceId}/members`),
+  shareDevice: (deviceId, email, role) =>
+    request("POST", `/devices/${deviceId}/members`, { email, role }),
+
+  // Learning & Safe Limits
   startLearning: (ch, isSimulated = true) =>
     request("POST", `/channels/${ch}/learning/start`, {
       is_simulated: isSimulated,
@@ -60,10 +69,22 @@ export const api = {
   cancelLearning: (sessionId) =>
     request("POST", `/learning/${sessionId}/cancel`),
 
-  // Profiles
+  // Profiles & Safe Limits Policy (Workstream 3 & 8)
   listProfiles: () => request("GET", "/profiles"),
   confirmProfile: (id) => request("POST", `/profiles/${id}/confirm`),
   updateProfile: (id, data) => request("PATCH", `/profiles/${id}`, data),
+  confirmProfileLimits: (id, data = {}) =>
+    request("POST", `/profiles/${id}/confirm_limits`, data),
+  rejectProfileLimits: (id) =>
+    request("POST", `/profiles/${id}/reject_limits`),
+  getHealthScore: (profileId, sample) =>
+    request("POST", `/profiles/${profileId}/health_score`, { sample }),
+
+  // Schedules (Workstream 7)
+  listSchedules: () => request("GET", "/schedules"),
+  createSchedule: (data) => request("POST", "/schedules", data),
+  updateSchedule: (id, data) => request("PATCH", `/schedules/${id}`, data),
+  deleteSchedule: (id) => request("DELETE", `/schedules/${id}`),
 
   // Recognition
   recognizeWindow: (ch, samples) =>
