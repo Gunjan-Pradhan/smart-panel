@@ -43,6 +43,14 @@ class LoadProfileUpdate(BaseModel):
     notes: str | None = None
 
 
+class ConfirmLimitsRequest(BaseModel):
+    current_limit_a: Decimal | None = Field(default=None, ge=Decimal("0.1"), le=Decimal("50.0"))
+    power_limit_w: Decimal | None = Field(default=None, ge=Decimal("1.0"), le=Decimal("10000.0"))
+    voltage_min_v: Decimal | None = Field(default=None, ge=Decimal("100.0"), le=Decimal("250.0"))
+    voltage_max_v: Decimal | None = Field(default=None, ge=Decimal("200.0"), le=Decimal("300.0"))
+    inrush_blanking_ms: int | None = Field(default=None, ge=0, le=10000)
+
+
 class LoadProfileResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -53,6 +61,19 @@ class LoadProfileResponse(BaseModel):
     nominal_power_w: Decimal | None
     nominal_current_a: Decimal | None
     notes: str | None
+    proposed_current_limit_a: Decimal | None = None
+    proposed_power_limit_w: Decimal | None = None
+    proposed_voltage_min_v: Decimal | None = None
+    proposed_voltage_max_v: Decimal | None = None
+    proposed_inrush_blanking_ms: int | None = None
+    limits_status: str = "NONE"
+    confirmed_current_limit_a: Decimal | None = None
+    confirmed_power_limit_w: Decimal | None = None
+    confirmed_voltage_min_v: Decimal | None = None
+    confirmed_voltage_max_v: Decimal | None = None
+    confirmed_inrush_blanking_ms: int | None = None
+    limits_confirmed_by: uuid.UUID | None = None
+    limits_confirmed_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 

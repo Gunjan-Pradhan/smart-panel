@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Sequence
 
 from sqlalchemy import select
@@ -134,6 +135,13 @@ class LearningSessionManager:
 
         profile: LoadProfile | None = None
         if profile_owner:
+            # Safe Limits Policy (Workstream 3): AI proposes conservative limits (125% current & power, safe voltage envelope, inrush duration)
+            proposed_i = round(Decimal(str(fp_data.current_mean)) * Decimal("1.25"), 3)
+            proposed_p = round(Decimal(str(fp_data.active_power_mean)) * Decimal("1.25"), 2)
+            proposed_vmin = Decimal("180.00")
+            proposed_vmax = Decimal("260.00")
+            proposed_blanking = 2000 if session.channel == 1 else 50
+
             profile = LoadProfile(
                 owner_id=profile_owner.id,
                 display_name=profile_name,
@@ -141,6 +149,12 @@ class LearningSessionManager:
                 nominal_power_w=round(fp_data.active_power_mean, 2),
                 nominal_current_a=round(fp_data.current_mean, 3),
                 user_confirmed=False,
+                proposed_current_limit_a=proposed_i,
+                proposed_power_limit_w=proposed_p,
+                proposed_voltage_min_v=proposed_vmin,
+                proposed_voltage_max_v=proposed_vmax,
+                proposed_inrush_blanking_ms=proposed_blanking,
+                limits_status="PROPOSED",
             )
             self.db.add(profile)
             self.db.flush()

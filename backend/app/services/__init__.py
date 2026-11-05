@@ -26,6 +26,11 @@ from app.services.live_pipeline import (
     subscriber,
     validate_telemetry_reading,
 )
+from app.services.safe_limits import (
+    confirm_profile_limits,
+    get_channel_hard_caps,
+    reject_profile_limits,
+)
 
 __all__ = [
     "AuthError",
@@ -36,6 +41,8 @@ __all__ = [
     "check_command_timeouts",
     "check_offline_devices",
     "compute_powers",
+    "confirm_profile_limits",
+    "get_channel_hard_caps",
     "handle_command_ack",
     "ingest_event_packet",
     "ingest_heartbeat_packet",
@@ -44,6 +51,7 @@ __all__ = [
     "issue_command",
     "issue_token_pair",
     "record_audit",
+    "reject_profile_limits",
     "revoke_refresh_token",
     "rotate_refresh_token",
     "subscriber",

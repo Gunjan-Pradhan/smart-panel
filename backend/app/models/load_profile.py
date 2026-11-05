@@ -23,6 +23,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -89,6 +90,48 @@ class LoadProfile(Base):
     nominal_current_a: Mapped[Decimal | None] = mapped_column(
         Numeric(7, 3), nullable=True
     )
+    # Proposed & Confirmed Safety Limits (Workstream 3)
+    proposed_current_limit_a: Mapped[Decimal | None] = mapped_column(
+        Numeric(7, 3), nullable=True
+    )
+    proposed_power_limit_w: Mapped[Decimal | None] = mapped_column(
+        Numeric(9, 2), nullable=True
+    )
+    proposed_voltage_min_v: Mapped[Decimal | None] = mapped_column(
+        Numeric(7, 2), nullable=True
+    )
+    proposed_voltage_max_v: Mapped[Decimal | None] = mapped_column(
+        Numeric(7, 2), nullable=True
+    )
+    proposed_inrush_blanking_ms: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+    limits_status: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default=text("'NONE'")
+    )
+    confirmed_current_limit_a: Mapped[Decimal | None] = mapped_column(
+        Numeric(7, 3), nullable=True
+    )
+    confirmed_power_limit_w: Mapped[Decimal | None] = mapped_column(
+        Numeric(9, 2), nullable=True
+    )
+    confirmed_voltage_min_v: Mapped[Decimal | None] = mapped_column(
+        Numeric(7, 2), nullable=True
+    )
+    confirmed_voltage_max_v: Mapped[Decimal | None] = mapped_column(
+        Numeric(7, 2), nullable=True
+    )
+    confirmed_inrush_blanking_ms: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+    limits_confirmed_by: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    limits_confirmed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -100,7 +143,8 @@ class LoadProfile(Base):
         server_default=func.now(),
     )
 
-    owner: Mapped["User"] = relationship()
+    owner: Mapped["User"] = relationship(foreign_keys=[owner_id])
+    limits_confirmer: Mapped["User | None"] = relationship(foreign_keys=[limits_confirmed_by])
     fingerprints: Mapped[list["ProfileFingerprint"]] = relationship(
         back_populates="profile", cascade="all, delete-orphan"
     )
