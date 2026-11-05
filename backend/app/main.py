@@ -18,6 +18,7 @@ from app.api import (
     enforcement,
     learning,
     recognition,
+    schedules,
     suggestions,
     websocket,
 )
@@ -68,6 +69,7 @@ def create_app() -> FastAPI:
     app.include_router(devices.router)
     app.include_router(learning.router)
     app.include_router(recognition.router)
+    app.include_router(schedules.router)
     app.include_router(suggestions.router)
     app.include_router(anomalies.router)
     app.include_router(enforcement.router)

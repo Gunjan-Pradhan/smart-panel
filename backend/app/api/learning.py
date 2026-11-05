@@ -24,6 +24,9 @@ from app.schemas.load_profile import (
     LoadProfileUpdate,
     StartLearningRequest,
 )
+from app.schemas.anomaly import AnomalyCheckRequest
+from app.services.anomaly_service import get_health_score_for_profile
+from app.services.fingerprint import ReadingSample
 from app.services.learning_manager import LearningSessionManager
 from app.services.safe_limits import confirm_profile_limits, reject_profile_limits
 
@@ -228,4 +231,64 @@ def reject_limits(
 
     updated_profile = reject_profile_limits(db, profile, current_user)
     return updated_profile
+
+
+# --------------------------------------------------------------------------
+# Health Score Endpoint (Workstream 8)
+# --------------------------------------------------------------------------
+
+
+@router.post(
+    "/profiles/{profile_id}/health_score",
+    tags=["anomaly-detection"],
+    summary="Score a live reading against the learned profile (health 0-100)",
+)
+def get_health_score(
+    profile_id: uuid.UUID,
+    request: AnomalyCheckRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> dict:
+    """Return a health score (0-100) for a live reading against the saved IsolationForest model.
+
+    * **100** = reading is completely within the learned normal range.
+    * **0**   = reading is a severe outlier (likely a fault or a different load).
+
+    If the profile has fewer than 10 fingerprints the model cannot be built yet
+    and a 400 is returned with a helpful message.
+
+    This endpoint is advisory only — it never trips a relay or adjusts limits.
+    Label any results produced without real PZEM data as **SIMULATED**.
+    """
+    profile = db.get(LoadProfile, profile_id)
+    if not profile or profile.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Profile not found",
+        )
+
+    reading = ReadingSample(
+        voltage_v=request.sample.voltage_v,
+        current_a=request.sample.current_a,
+        active_power_w=request.sample.active_power_w,
+        power_factor=request.sample.power_factor,
+        frequency_hz=request.sample.frequency_hz,
+        timestamp_s=request.sample.timestamp_s,
+    )
+
+    score = get_health_score_for_profile(profile_id, reading, db)
+    if score is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Health score model is not ready. The profile needs at least 10 "
+                "fingerprint snapshots. Run more learning sessions first."
+            ),
+        )
+
+    return {
+        "profile_id": str(profile_id),
+        "health_score": score,
+        "note": "SIMULATED — replace with live PZEM readings on real hardware",
+    }
 
