@@ -78,13 +78,15 @@ def make_event(device: Device, **overrides) -> Event:
 
 
 def make_command(device: Device, **overrides) -> Command:
+    current_time = datetime.now(timezone.utc)
     data = {
         "cmd_id": uuid.uuid4(),
         "device_pk": device.id,
         "ch": 1,
         "action": "ON",
         "source": "user",
-        "expires_at": NOW + timedelta(seconds=30),
+        "issued_at": current_time,
+        "expires_at": current_time + timedelta(seconds=30),
     }
     data.update(overrides)
     return Command(**data)

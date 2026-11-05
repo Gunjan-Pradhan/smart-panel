@@ -19,8 +19,10 @@ from app.api import (
     learning,
     recognition,
     suggestions,
+    websocket,
 )
 from app.config import get_settings
+from app.services.live_pipeline import subscriber
 
 
 def validate_security_settings() -> None:
@@ -37,7 +39,13 @@ def validate_security_settings() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     validate_security_settings()
-    yield
+    # Workstream 5: Start background MQTT subscriber on startup
+    subscriber.start()
+    try:
+        yield
+    finally:
+        # Stop background subscriber cleanly on shutdown
+        subscriber.stop()
 
 
 def create_app() -> FastAPI:
@@ -63,6 +71,7 @@ def create_app() -> FastAPI:
     app.include_router(suggestions.router)
     app.include_router(anomalies.router)
     app.include_router(enforcement.router)
+    app.include_router(websocket.router)
 
     @app.get("/health", tags=["system"])
     def health() -> dict[str, str]:

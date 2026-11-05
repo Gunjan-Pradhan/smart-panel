@@ -16,6 +16,16 @@ from app.services.command_service import (
     handle_command_ack,
     issue_command,
 )
+from app.services.live_pipeline import (
+    check_offline_devices,
+    compute_powers,
+    ingest_event_packet,
+    ingest_heartbeat_packet,
+    ingest_status_packet,
+    ingest_telemetry_packet,
+    subscriber,
+    validate_telemetry_reading,
+)
 
 __all__ = [
     "AuthError",
@@ -24,10 +34,18 @@ __all__ = [
     "RefreshTokenReuse",
     "authenticate",
     "check_command_timeouts",
+    "check_offline_devices",
+    "compute_powers",
     "handle_command_ack",
+    "ingest_event_packet",
+    "ingest_heartbeat_packet",
+    "ingest_status_packet",
+    "ingest_telemetry_packet",
     "issue_command",
     "issue_token_pair",
     "record_audit",
     "revoke_refresh_token",
     "rotate_refresh_token",
+    "subscriber",
+    "validate_telemetry_reading",
 ]
