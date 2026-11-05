@@ -8,8 +8,10 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app.api import (
     anomalies,
@@ -23,6 +25,7 @@ from app.api import (
     websocket,
 )
 from app.config import get_settings
+from app.db.session import get_db
 from app.services.live_pipeline import subscriber
 
 
@@ -76,8 +79,20 @@ def create_app() -> FastAPI:
     app.include_router(websocket.router)
 
     @app.get("/health", tags=["system"])
-    def health() -> dict[str, str]:
-        return {"status": "ok", "phase": "2"}
+    def health(db: Session = Depends(get_db)) -> dict[str, str]:
+        db_status = "ok"
+        try:
+            db.execute(text("SELECT 1"))
+        except Exception as exc:
+            db_status = f"unhealthy: {exc}"
+
+        return {
+            "status": "ok" if db_status == "ok" else "degraded",
+            "phase": "2",
+            "database": db_status,
+            "mqtt_subscriber": "running" if subscriber.is_running else "stopped",
+            "version": "1.0.0-capstone",
+        }
 
     return app
 

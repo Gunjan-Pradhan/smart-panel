@@ -360,6 +360,10 @@ class LiveMQTTSubscriber:
         self.client: Optional[mqtt.Client] = None
         self._is_running = False
 
+    @property
+    def is_running(self) -> bool:
+        return self._is_running
+
     def on_connect(self, client: mqtt.Client, userdata: Any, flags: Any, rc: Any, properties: Any = None) -> None:
         # rc can be an integer or ReasonCode object in v2
         rc_code = getattr(rc, "value", rc)
