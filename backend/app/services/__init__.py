@@ -11,6 +11,11 @@ from app.services.auth import (
     revoke_refresh_token,
     rotate_refresh_token,
 )
+from app.services.command_service import (
+    check_command_timeouts,
+    handle_command_ack,
+    issue_command,
+)
 
 __all__ = [
     "AuthError",
@@ -18,6 +23,9 @@ __all__ = [
     "InvalidRefreshToken",
     "RefreshTokenReuse",
     "authenticate",
+    "check_command_timeouts",
+    "handle_command_ack",
+    "issue_command",
     "issue_token_pair",
     "record_audit",
     "revoke_refresh_token",

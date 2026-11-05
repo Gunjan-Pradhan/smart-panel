@@ -7,10 +7,14 @@ from app.schemas.auth import (
     TokenResponse,
     UserOut,
 )
+from app.schemas.command import CommandAckIn, CommandCreate, CommandOut
 from app.schemas.device import ChannelOut, DeviceOut
 
 __all__ = [
     "ChannelOut",
+    "CommandAckIn",
+    "CommandCreate",
+    "CommandOut",
     "DeviceOut",
     "LoginRequest",
     "LogoutRequest",

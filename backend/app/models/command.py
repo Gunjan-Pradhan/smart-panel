@@ -1,6 +1,6 @@
 """Relay commands issued to a device.
 
-Schema reference: docs/database_schema.md §4.9.
+Schema reference: docs/database_schema.md §4.9 and Workstream 4.
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     SmallInteger,
     Text,
     func,
@@ -31,7 +32,16 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 
 COMMAND_ACTIONS = ("ON", "OFF")
 COMMAND_SOURCES = ("user", "schedule", "system", "optimization")
-COMMAND_STATUSES = ("PENDING", "DONE", "REJECTED", "FAILED", "TIMED_OUT")
+COMMAND_STATUSES = (
+    "PENDING",
+    "SENT",
+    "DONE",
+    "REJECTED",
+    "REFUSED",
+    "FAILED",
+    "TIMED_OUT",
+    "TIMEOUT",
+)
 
 
 class Command(Base):
@@ -49,6 +59,12 @@ class Command(Base):
     ch: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     action: Mapped[str] = mapped_column(Text, nullable=False)
     source: Mapped[str] = mapped_column(Text, nullable=False)
+    priority: Mapped[str | None] = mapped_column(
+        Text, nullable=True, server_default=text("'user'")
+    )
+    duration_seconds: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
     requested_by: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -69,6 +85,9 @@ class Command(Base):
         DateTime(timezone=True), nullable=False
     )
     acked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    executed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     relay_after: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
@@ -92,12 +111,12 @@ class Command(Base):
             name="source_allowed",
         ),
         CheckConstraint(
-            "status IN ('PENDING', 'DONE', 'REJECTED', 'FAILED', 'TIMED_OUT')",
+            "status IN ('PENDING', 'SENT', 'DONE', 'REJECTED', 'REFUSED', 'FAILED', 'TIMED_OUT', 'TIMEOUT')",
             name="status_allowed",
         ),
         CheckConstraint("expires_at > issued_at", name="expiry_after_issue"),
         CheckConstraint(
-            "status <> 'PENDING' OR acked_at IS NULL",
+            "status NOT IN ('PENDING', 'SENT') OR acked_at IS NULL",
             name="pending_has_no_ack",
         ),
         Index(
@@ -109,6 +128,11 @@ class Command(Base):
             "ix_commands_pending",
             "status",
             postgresql_where=text("status = 'PENDING'"),
+        ),
+        Index(
+            "ix_commands_active_status",
+            "status",
+            "expires_at",
         ),
     )
 
