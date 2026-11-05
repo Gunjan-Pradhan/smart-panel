@@ -29,6 +29,7 @@ from app.db.base import Base
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from app.models.channel import Channel
     from app.models.command import Command
+    from app.models.device_member import DeviceMember
     from app.models.event import Event
     from app.models.schedule import Schedule
     from app.models.telemetry import Telemetry
@@ -105,6 +106,11 @@ class Device(Base):
         passive_deletes=True,
     )
     schedules: Mapped[list["Schedule"]] = relationship(
+        back_populates="device",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    members: Mapped[list["DeviceMember"]] = relationship(
         back_populates="device",
         cascade="all, delete-orphan",
         passive_deletes=True,

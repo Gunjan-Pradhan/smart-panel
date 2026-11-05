@@ -22,7 +22,7 @@ def test_alembic_is_at_head(engine) -> None:
             text("SELECT version_num FROM alembic_version")
         ).scalar()
 
-    assert revision == "0007"
+    assert revision == "0008"
 
 
 def test_timescaledb_extension_installed(engine) -> None:
@@ -47,6 +47,7 @@ def test_expected_tables_exist(engine) -> None:
         "schedules",
         "audit_log",
         "telemetry",
+        "device_members",
         "alembic_version",
     } <= tables
 

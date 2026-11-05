@@ -47,6 +47,10 @@ class RefreshTokenReuse(AuthError):
     pass
 
 
+class UserAlreadyExists(AuthError):
+    pass
+
+
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -112,6 +116,46 @@ def authenticate(
     if needs_rehash(user.password_hash):
         user.password_hash = hash_password(password)
     user.last_login_at = _now()
+    return user
+
+
+def register_user(
+    session: Session,
+    email: str,
+    password: str,
+    role: str = "operator",
+    ip_address: str | None = None,
+) -> User:
+    norm_email = normalize_email(email)
+    existing = session.scalar(
+        select(User).where(func.lower(User.email) == norm_email)
+    )
+    if existing is not None:
+        raise UserAlreadyExists(f"User with email {norm_email} already exists")
+
+    if role not in ("operator", "viewer"):
+        raise ValueError("Invalid registration role; must be 'operator' or 'viewer'")
+
+    user = User(
+        email=norm_email,
+        password_hash=hash_password(password),
+        role=role,
+        is_active=True,
+    )
+    session.add(user)
+    session.flush()
+
+    record_audit(
+        session,
+        action="REGISTER",
+        entity_type="user",
+        user_id=user.id,
+        entity_id=str(user.id),
+        detail={"email": norm_email, "role": role},
+        ip_address=ip_address,
+    )
+    session.commit()
+    session.refresh(user)
     return user
 
 

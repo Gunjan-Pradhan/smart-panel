@@ -13,6 +13,7 @@ from app.schemas.auth import (
     LoginRequest,
     LogoutRequest,
     RefreshRequest,
+    RegisterRequest,
     TokenResponse,
     UserOut,
 )
@@ -20,10 +21,12 @@ from app.security.rate_limit import LoginRateLimiter
 from app.services.auth import (
     InvalidRefreshToken,
     RefreshTokenReuse,
+    UserAlreadyExists,
     authenticate,
     issue_token_pair,
     normalize_email,
     record_audit,
+    register_user,
     revoke_refresh_token,
     rotate_refresh_token,
 )
@@ -44,6 +47,44 @@ def _client_meta(request: Request) -> tuple[str | None, str | None]:
 
 def _rate_key(host: str | None, email: str) -> str:
     return f"{host or 'unknown'}:{normalize_email(email)}"
+
+
+@router.post(
+    "/register",
+    response_model=TokenResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def register(
+    payload: RegisterRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> TokenResponse:
+    host, user_agent = _client_meta(request)
+    try:
+        user = register_user(
+            db,
+            email=payload.email,
+            password=payload.password,
+            role=payload.role,
+            ip_address=host,
+        )
+    except UserAlreadyExists as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from None
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from None
+
+    return issue_token_pair(
+        db,
+        user,
+        user_agent=user_agent,
+        ip_address=host,
+    )
 
 
 @router.post("/login", response_model=TokenResponse)

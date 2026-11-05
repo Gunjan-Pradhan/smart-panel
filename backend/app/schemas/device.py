@@ -5,7 +5,23 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+
+class MemberCreate(BaseModel):
+    email: EmailStr
+    role: str = Field(default="viewer", pattern="^(admin|viewer)$")
+
+
+class MemberOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    device_id: uuid.UUID
+    user_id: uuid.UUID
+    email: str
+    role: str
+    created_at: datetime
 
 
 class ChannelOut(BaseModel):

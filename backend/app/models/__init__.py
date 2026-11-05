@@ -4,6 +4,7 @@ from app.models.audit_log import AuditLog
 from app.models.channel import Channel
 from app.models.command import Command
 from app.models.device import Device
+from app.models.device_member import DeviceMember
 from app.models.event import Event
 from app.models.load import Load
 from app.models.load_profile import (
@@ -24,6 +25,7 @@ __all__ = [
     "Channel",
     "Command",
     "Device",
+    "DeviceMember",
     "Event",
     "LearningSession",
     "Load",

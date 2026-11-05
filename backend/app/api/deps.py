@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db.session import get_db
-from app.models import Device, User
+from app.models import Device, DeviceMember, User
 from app.security import decode_access_token
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -59,12 +59,33 @@ def require_roles(*roles: str):
 
 
 def owned_device_query(user: User):
-    """Base query filtered to the caller's devices (admins see all)."""
+    """Base query filtered to devices the user owns or is a member of (admins see all)."""
 
     statement = select(Device).options(selectinload(Device.channels))
     if user.role != "admin":
-        statement = statement.where(Device.owner_id == user.id)
+        statement = statement.outerjoin(
+            DeviceMember, DeviceMember.device_id == Device.id
+        ).where(
+            (Device.owner_id == user.id) | (DeviceMember.user_id == user.id)
+        ).distinct()
     return statement
+
+
+def get_user_device_role(db: Session, user: User, device: Device) -> str:
+    """Returns the effective role of a user on a device: 'owner', 'admin', 'viewer', or 'none'."""
+    if user.role == "admin":
+        return "admin"
+    if device.owner_id == user.id:
+        return "owner"
+    member = db.scalar(
+        select(DeviceMember).where(
+            DeviceMember.device_id == device.id,
+            DeviceMember.user_id == user.id,
+        )
+    )
+    if member is not None:
+        return member.role
+    return "none"
 
 
 def get_device_for_user(db: Session, user: User, device_id: str) -> Device:

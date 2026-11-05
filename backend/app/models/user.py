@@ -30,6 +30,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from app.models.device import Device
+    from app.models.device_member import DeviceMember
     from app.models.load import Load
     from app.models.schedule import Schedule
 
@@ -87,6 +88,11 @@ class User(Base):
     )
     schedules: Mapped[list["Schedule"]] = relationship(
         back_populates="owner",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    device_memberships: Mapped[list["DeviceMember"]] = relationship(
+        back_populates="user",
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
