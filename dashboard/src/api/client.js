@@ -51,6 +51,9 @@ export const api = {
   login: (email, password) =>
     request("POST", "/auth/login", { email, password }),
 
+  register: (email, password, role = "operator") =>
+    request("POST", "/auth/register", { email, password, role }),
+
   // Devices & Commands
   getDevices: () => request("GET", "/devices"),
   getDevice: (id) => request("GET", `/devices/${id}`),

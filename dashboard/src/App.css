@@ -1,5 +1,5 @@
 * { box-sizing: border-box; }
-body { margin: 0; background: #f3f6fb; color: #172033; font-family: Arial, sans-serif; }
+body { margin: 0; background: #000000; color: #f4f6f9; font-family: 'Inter', Arial, sans-serif; }
 button { font: inherit; }
 
 .dashboard { max-width: 1450px; margin: auto; padding: 28px; }
