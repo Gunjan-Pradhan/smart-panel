@@ -83,7 +83,47 @@ export function useWebSocket(initialDeviceId = "PANEL-0001") {
               },
             }));
           }
-          // 2. Legacy / Node-RED combined object
+          // 2. Direct firmware/mock telemetry (via MQTT bridge or direct WebSocket)
+          // Firmware publishes: {v, i, p, pf, f, e_kwh, relay, state, ts, ch}
+          else if (msg.ch !== undefined && (msg.ch === 1 || msg.ch === 2) && msg.v !== undefined) {
+            const chKey = msg.ch === 1 ? "circuit1" : "circuit2";
+            const v = Number.isFinite(Number(msg.v)) ? Number(msg.v) : null;
+            const i = Number.isFinite(Number(msg.i)) ? Number(msg.i) : null;
+            const p = Number.isFinite(Number(msg.p)) ? Number(msg.p) : null;
+            const s = Math.round(v * i * 100) / 100;
+            const q = Math.round(Math.sqrt(Math.max(0, s * s - p * p)) * 100) / 100;
+            const pf = Number.isFinite(Number(msg.pf)) ? Number(msg.pf) : null;
+            const relayOn = Boolean(msg.relay);
+
+            setTelemetry((prev) => ({
+              ...prev,
+              uptime_s: msg.ts ? Math.floor(Date.now() / 1000 - msg.ts) : (prev.uptime_s ?? 0),
+              [chKey]: {
+                ...(prev[chKey] || {}),
+                valid: true,
+                voltage_V: v,
+                current_A: i,
+                active_power_W: p,
+                active_power_kW: Math.round((p / 1000) * 10000) / 10000,
+                apparent_power_VA: s,
+                reactive_power_var: q,
+                frequency_Hz: Number(msg.f) || 50.0,
+                power_factor_meter: pf,
+                power_factor_calculated: s > 0 ? Math.round((p / s) * 1000) / 1000 : pf,
+                energy_kWh: Number.isFinite(Number(msg.e_kwh)) ? Number(msg.e_kwh) : null,
+                relay_on: relayOn,
+                "relay/state": relayOn ? "ON" : "OFF",
+                relay_mode: msg.state || "MANUAL",
+                supply_status: v >= 180 && v <= 265 ? "NORMAL" : "OUT OF RANGE",
+                fault: msg.state === "FAULT_TRIP" || msg.state === "LOCKOUT",
+                over_voltage: v > 265,
+                under_voltage: v < 180,
+                over_current: msg.ch === 1 ? i > 16.0 : i > 10.0,
+                last_updated: new Date().toLocaleTimeString(),
+              },
+            }));
+          }
+          // 3. Legacy / Node-RED combined object
           else if (msg.circuit1 || msg.circuit2) {
             setTelemetry(msg);
           }

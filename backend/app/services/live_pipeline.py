@@ -408,9 +408,11 @@ class LiveMQTTSubscriber:
     def start(self) -> None:
         """Start non-blocking MQTT loop in background thread."""
         try:
+            import os
+            unique_suffix = f"{os.getpid()}-{uuid.uuid4().hex[:8]}"
             self.client = mqtt.Client(
                 mqtt.CallbackAPIVersion.VERSION2,
-                client_id=f"{self.settings.mqtt_client_id}-live",
+                client_id=f"{self.settings.mqtt_client_id}-live-{unique_suffix}",
             )
             self.client.on_connect = self.on_connect
             self.client.on_message = self.on_message
